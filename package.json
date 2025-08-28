@@ -1,0 +1,14 @@
+{
+  "private": "true",
+  "name": "my-app",
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm run -r --parallel --aggregate-output dev",
+    "build": "pnpm run -r build"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

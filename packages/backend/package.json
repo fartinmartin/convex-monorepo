@@ -1,0 +1,17 @@
+{
+  "name": "@my-app/backend",
+  "version": "0.0.1",
+  "description": "",
+  "scripts": {
+    "dev": "convex dev",
+    "setup": "convex dev --until-success"
+  },
+  "dependencies": {
+    "@convex-dev/better-auth": "^0.7.17",
+    "convex": "^1.25.0"
+  },
+  "devDependencies": {
+    "semver": "^7.7.2",
+    "typescript": "5.8.3"
+  }
+}

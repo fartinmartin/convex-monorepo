@@ -1,0 +1,9 @@
+{
+	"/": [
+		"src/routes/+layout.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/api/auth/[...all]": [
+		"src/routes/api/auth/[...all]/+server.ts"
+	]
+}
