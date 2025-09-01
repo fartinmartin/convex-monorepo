@@ -1,226 +1,175 @@
 // https://github.com/mmailaender/convex-better-auth-svelte/blob/main/src/lib/svelte/client.svelte.ts
 
-import { getContext, setContext, onMount } from "svelte";
-import type { ConvexClient, ConvexClientOptions } from "convex/browser";
+import { getContext, setContext } from "svelte";
+import type { AuthTokenFetcher, ConvexClient } from "convex/browser";
 import type { AuthClient, SessionState } from "./client.types";
+import { browser } from "$app/environment";
+import type { authClient } from "$lib/auth-client";
 
 const AUTH_CONTEXT_KEY = Symbol("auth-context");
+type MyAuthClient = typeof authClient;
 
 type AuthContext = {
-  authClient: AuthClient;
-  fetchAccessToken: (options: {
-    forceRefreshToken: boolean;
-  }) => Promise<string | null>;
+  client: MyAuthClient;
+  fetchAccessToken: AuthTokenFetcher;
   isLoading: boolean;
   isAuthenticated: boolean;
 };
 
-/**
- * create a convex better auth client for svelte
- */
-export function createAuthClient({
-  authClient,
-  convexClient,
-  options,
-}: {
-  authClient: AuthClient;
-  convexClient: ConvexClient;
-  options?: ConvexClientOptions;
-}) {
-  let sessionData: SessionState["data"] | null = $state(null);
-  let sessionPending: boolean = $state(true);
+export function getAuthContext() {
+  const context = getContext<AuthContext>(AUTH_CONTEXT_KEY);
+  if (!context) throw new Error("Have you run `createAuthContext()` yet?");
+  return context;
+}
 
-  let isConvexAuthenticated: boolean | null = $state(null);
+export function createAuthContext(options: {
+  authClient: MyAuthClient;
+  convexClient: ConvexClient;
+  initialData?: SessionState["data"] | null;
+}) {
+  const { authClient, convexClient, initialData } = options;
+
+  const _auth = betterAuth(authClient, initialData);
+  const _convex = convex(convexClient, authClient, _auth);
+
+  useOneTimeToken(_auth, authClient);
+
+  setContext<AuthContext>(AUTH_CONTEXT_KEY, {
+    client: authClient,
+    fetchAccessToken: _convex.fetchAccessToken,
+    get isLoading() {
+      return _convex.isLoading;
+    },
+    get isAuthenticated() {
+      return _convex.isAuthenticated;
+    },
+  });
+}
+
+function betterAuth(
+  authClient: MyAuthClient,
+  initialData?: SessionState["data"] | null,
+) {
+  let sessionData: SessionState["data"] | null = $state(initialData ?? null);
+  let sessionPending: boolean = $state(initialData ? false : true);
 
   authClient.useSession().subscribe((session) => {
-    const wasAuthenticated = sessionData !== null;
     sessionData = session.data;
     sessionPending = session.isPending;
-
-    // if session state changed from authenticated to unauthenticated, reset convex auth
-    const isNowAuthenticated = sessionData !== null;
-    if (wasAuthenticated && !isNowAuthenticated) {
-      isConvexAuthenticated = false;
-    }
-    // if we went back to loading state, reset convex auth to null
-    if (session.isPending && isConvexAuthenticated !== null) {
-      isConvexAuthenticated = null;
-    }
   });
 
-  const isAuthProviderAuthenticated = $derived(sessionData !== null);
+  const isAuthenticated = $derived(sessionData !== null);
 
-  const isAuthenticated = $derived(
-    isAuthProviderAuthenticated && (isConvexAuthenticated ?? false),
-  );
-
-  // loading state - we're loading if session is pending or if we have a session but no convex confirmation yet
-  const isLoading = $derived(
-    sessionPending ||
-      (isAuthProviderAuthenticated && isConvexAuthenticated === null),
-  );
-
-  const fetchAccessToken = async ({
-    forceRefreshToken,
-  }: {
-    forceRefreshToken: boolean;
-  }): Promise<string | null> => {
-    if (forceRefreshToken) {
-      const token = await fetchToken(authClient, logVerbose);
-      logVerbose(`returning retrieved token`);
-      return token;
-    }
-    return null;
-  };
-
-  if (!convexClient) throw new Error("No ConvexClient provided.");
-
-  const logVerbose = (msg: string) => {
-    if (options?.verbose) console.debug(`${new Date().toISOString()} ${msg}`);
-  };
-
-  // todo: this needs to be eventually an reactive effect if someone adds an ott to the url programatically.
-  // call the one-time token handler
-  onMount(() => handleOneTimeToken(authClient));
-
-  // updated effect to handle backend confirmation
-  $effect(() => {
-    let effectRelevant = true;
-
-    if (isAuthProviderAuthenticated) {
-      // set auth with callback to receive backend confirmation
-      convexClient.setAuth(fetchAccessToken, (isAuthenticated: boolean) => {
-        if (effectRelevant) isConvexAuthenticated = isAuthenticated;
-      });
-
-      // cleanup function
-      return () => {
-        effectRelevant = false;
-        // if unmounting or something changed before we finished fetching the token
-        // we shouldn't transition to a loaded state.
-        isConvexAuthenticated = isConvexAuthenticated ? false : null;
-      };
-    } else {
-      // clear auth when not authenticated
-      convexClient.client.clearAuth();
-      // also run cleanup for clearing
-      return () => {
-        // set state back to loading in case this is a transition from one
-        // fetchtoken function to another
-        isConvexAuthenticated = null;
-      };
-    }
-  });
-
-  // set context to make auth state available to useauth
-  setContext<AuthContext>(AUTH_CONTEXT_KEY, {
-    authClient,
-    fetchAccessToken,
-    get isLoading() {
-      return isLoading;
+  return {
+    get sessionData() {
+      return sessionData;
+    },
+    get sessionPending() {
+      return sessionPending;
     },
     get isAuthenticated() {
       return isAuthenticated;
     },
-  });
+  };
 }
 
-async function fetchToken(
-  authClient: AuthClient,
-  logVerbose: (message: string) => void,
-): Promise<string | null> {
-  const initialBackoff = 100;
-  const maxBackoff = 1000;
-  let retries = 0;
-
-  const nextBackoff = () => {
-    const baseBackoff = initialBackoff * Math.pow(2, retries);
-    retries += 1;
-    const actualBackoff = Math.min(baseBackoff, maxBackoff);
-    const jitter = actualBackoff * (Math.random() - 0.5);
-    return actualBackoff + jitter;
+function convex(
+  convexClient: ConvexClient,
+  authClient: MyAuthClient,
+  _auth: ReturnType<typeof betterAuth>,
+) {
+  const fetchAccessToken: AuthTokenFetcher = async ({ forceRefreshToken }) => {
+    if (forceRefreshToken) return await fetchToken(authClient);
+    return null;
   };
 
-  const fetchWithRetry = async (): Promise<string | null> => {
-    try {
-      const { data } = await authClient.convex.token();
-      return data?.token || null;
-    } catch (e) {
-      if (!isNetworkError(e)) throw e;
+  let isConvexAuthenticated: boolean | null = $state(null);
 
-      if (retries > 10) {
-        logVerbose(`fetchToken failed with network error, giving up`);
-        throw e;
-      }
+  $effect(() => {
+    if (convexClient.disabled) return;
 
-      const backoff = nextBackoff();
-      logVerbose(
-        `fetchToken failed with network error, attempting retrying in ${backoff}ms`,
-      );
-
-      await new Promise((resolve) => setTimeout(resolve, backoff));
-      return fetchWithRetry();
-    }
-  };
-
-  return fetchWithRetry();
-}
-
-// Handle one-time token verification (equivalent to useEffect)
-async function handleOneTimeToken(authClient: AuthClient) {
-  const url = new URL(window.location?.href);
-  const token = url.searchParams.get("ott");
-
-  if (!token) return;
-  if (!("crossDomain" in authClient)) return;
-
-  url.searchParams.delete("ott");
-  const result = await authClient.crossDomain.oneTimeToken.verify({ token });
-  const sessionData = result.data?.session;
-
-  if (sessionData) {
-    await authClient.getSession({
-      fetchOptions: {
-        headers: { Authorization: `Bearer ${sessionData.token}` },
-      },
-    });
-
-    authClient.updateSession();
-  }
-
-  window.history.replaceState({}, "", url);
-}
-
-/**
- * Hook to access authentication state and functions
- * Must be used within a component that has createAuthClient called in its parent tree
- */
-export function useAuth(): {
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  fetchAccessToken: ({
-    forceRefreshToken,
-  }: {
-    forceRefreshToken: boolean;
-  }) => Promise<string | null>;
-} {
-  const authContext = getContext<AuthContext>(AUTH_CONTEXT_KEY);
-
-  if (!authContext) {
-    throw new Error(
-      "useAuth must be used within a component that has createAuthClient called in its parent tree",
+    // TODO: re-sign in anonymously if signed out?
+    convexClient.setAuth(
+      fetchAccessToken,
+      (auth) => (isConvexAuthenticated = auth),
     );
-  }
+  });
+
+  const isLoading = $derived(
+    _auth.sessionPending ||
+      (_auth.isAuthenticated && isConvexAuthenticated === null),
+  );
+
+  const isAuthenticated = $derived(
+    _auth.isAuthenticated && (isConvexAuthenticated ?? false),
+  );
 
   return {
-    get isLoading() {
-      return authContext.isLoading;
+    fetchAccessToken,
+    get isConvexAuthenticated() {
+      return isConvexAuthenticated;
     },
     get isAuthenticated() {
-      return authContext.isAuthenticated;
+      return isAuthenticated;
     },
-    fetchAccessToken: authContext.fetchAccessToken,
+    get isLoading() {
+      return isLoading;
+    },
   };
+}
+
+//
+
+function useOneTimeToken(
+  _auth: ReturnType<typeof betterAuth>,
+  authClient: AuthClient,
+) {
+  if (!browser) return;
+
+  async function handleToken() {
+    const url = new URL(window.location.href);
+    const token = url.searchParams.get("ott");
+    if (!token || !("crossDomain" in authClient)) return;
+
+    url.searchParams.delete("ott");
+
+    const result = await authClient.crossDomain?.oneTimeToken.verify({
+      token,
+    });
+    const sessionData = result.data?.session;
+
+    if (sessionData) {
+      const headers = { Authorization: `Bearer ${sessionData.token}` };
+      await authClient.getSession({ fetchOptions: { headers } });
+      authClient.updateSession();
+    }
+
+    window.history.replaceState({}, "", url);
+  }
+
+  $effect(() => {
+    if (_auth.isAuthenticated) handleToken();
+  });
+
+  const onUrlChange = () => handleToken();
+  window.addEventListener("popstate", onUrlChange);
+  window.addEventListener("pushstate", onUrlChange);
+
+  return () => {
+    window.removeEventListener("popstate", onUrlChange);
+    window.removeEventListener("pushstate", onUrlChange);
+  };
+}
+
+//
+
+async function fetchToken(authClient: MyAuthClient) {
+  try {
+    const { data } = await authClient.convex.token();
+    return data?.token ?? null;
+  } catch (error) {
+    return null;
+  }
 }
 
 // https://github.com/sindresorhus/is-network-error/blob/main/index.js

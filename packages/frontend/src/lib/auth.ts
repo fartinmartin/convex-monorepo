@@ -23,6 +23,11 @@ const createOptions = (ctx: GenericCtx) =>
       },
     },
 
+    session: {
+      expiresIn: 60 * 60 * 24 * 90, // 90 days
+      updateAge: 60 * 60 * 24, // refresh expiration every day
+    },
+
     plugins: [
       anonymous({
         onLinkAccount: async (ctx) => {}, // todo
@@ -41,14 +46,15 @@ export const createAuth = (ctx: GenericCtx) => {
 };
 
 // mostly for inferring types from better auth options
-export const authWithoutCtx = createAuth({} as any);
+export type AuthWithoutCtx = ReturnType<typeof createAuthWithoutCtx>;
+export const createAuthWithoutCtx = () => createAuth({} as any);
 
 // svelte helpers
 import type { RequestEvent } from "@sveltejs/kit";
 import { createCookieGetter, parseSetCookieHeader } from "better-auth/cookies";
 
 export function getCookie() {
-  const createCookie = createCookieGetter(authWithoutCtx.options);
+  const createCookie = createCookieGetter(createAuthWithoutCtx().options);
   return createCookie(JWT_COOKIE_NAME);
 }
 

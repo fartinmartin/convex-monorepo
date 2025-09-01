@@ -6,6 +6,7 @@ import {
 import { api, components, internal } from "./_generated/api";
 import { query } from "./_generated/server";
 import { DataModel, Id } from "./_generated/dataModel";
+import { createAuth } from "$lib/auth";
 
 const authFunctions: AuthFunctions = internal.auth;
 const publicAuthFunctions: PublicAuthFunctions = api.auth;
@@ -53,5 +54,21 @@ export const getCurrentUser = query({
       ...user,
       ...userMetadata,
     };
+  },
+});
+
+export const getCurrentSession = query({
+  args: {},
+  handler: async (ctx) => {
+    const auth = createAuth(ctx);
+
+    const headers = await betterAuthComponent.getHeaders(ctx);
+    const session = await auth.api.getSession({ headers });
+
+    if (!session) {
+      return null;
+    }
+
+    return session;
   },
 });

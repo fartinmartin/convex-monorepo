@@ -1,15 +1,22 @@
 <script lang="ts">
+	import { page } from "$app/state";
 	import favicon from "$lib/assets/favicon.svg";
+
 	import { setupConvex, useConvexClient } from "convex-svelte";
 	import { PUBLIC_CONVEX_API_URL } from "$env/static/public";
+
 	import { authClient } from "$lib/auth-client";
-	import { createAuthClient } from "$lib/auth/client.svelte";
+	import { createAuthContext } from "$lib/auth/client.svelte";
 
 	let { children } = $props();
 
 	setupConvex(PUBLIC_CONVEX_API_URL);
-	const convexClient = useConvexClient();
-	createAuthClient({ authClient, convexClient, options: { verbose: true } });
+
+	createAuthContext({
+		authClient,
+		convexClient: useConvexClient(),
+		initialData: page.data.session,
+	});
 </script>
 
 <svelte:head>
@@ -17,3 +24,13 @@
 </svelte:head>
 
 {@render children?.()}
+
+<style>
+	:global(body) {
+		font-family: monospace;
+	}
+
+	:global(*) {
+		font-family: inherit;
+	}
+</style>

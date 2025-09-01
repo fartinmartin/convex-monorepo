@@ -1,15 +1,16 @@
 <script lang="ts">
 	import { page } from "$app/state";
-	import { authClient } from "$lib/auth-client";
-	import { useAuth } from "$lib/auth/client.svelte";
+	import { getAuthContext } from "./client.svelte";
 	import AuthForm from "./auth-form.svelte";
 
-	const auth = useAuth();
+	// TODO: get user/session from authContenxt
+	// TODO: make use of initial page.data within authContext so we don't have loading state?
+	const auth = getAuthContext();
 	const user = page.data.user;
 
 	async function signOut() {
 		try {
-			await authClient.signOut();
+			await auth.client.signOut();
 		} catch (error) {
 			console.error("sign out error:", error);
 		}
@@ -17,17 +18,20 @@
 </script>
 
 {#if auth.isLoading}
-	<div>loading...</div>
+	<div>
+		<div>hello, {user?.name}!</div>
+		<div>loading...</div>
+	</div>
 {:else if !auth.isAuthenticated}
 	<AuthForm
 		signIn={async ({ email, password }) => {
-			await authClient.signIn.email(
+			await auth.client.signIn.email(
 				{ email, password },
 				{ onError: (ctx) => alert(ctx.error.message) },
 			);
 		}}
 		signUp={async ({ name, email, password }) => {
-			await authClient.signUp.email(
+			await auth.client.signUp.email(
 				{ name, email, password },
 				{ onError: (ctx) => alert(ctx.error.message) },
 			);

@@ -16,16 +16,22 @@ const authHandle: Handle = async ({ event, resolve }) => {
     return resolve(event);
   }
 
+  const { convex } = event.locals;
+
+  // prettier-ignore
+  const setLocals = async ({ user, session }: Partial<App.Locals> = {}) => {
+    event.locals.user = user ?? (await convex.query(api.auth.getCurrentUser, {}));
+    event.locals.session = session ?? (await convex.query(api.auth.getCurrentSession, {}));
+  };
+
   let token = getToken(event) ?? (await signInAnonymous(event));
 
   if (token) {
-    const { convex } = event.locals;
-
     convex.setAuth(token);
     const user = await convex.query(api.auth.getCurrentUser, {});
 
     if (user) {
-      event.locals.user = user;
+      await setLocals({ user });
     } else {
       // token is invalid/expired, clear it and sign in anonymously
       event.cookies.delete(getCookie().name, { path: "/" });
@@ -33,7 +39,7 @@ const authHandle: Handle = async ({ event, resolve }) => {
 
       if (token) {
         convex.setAuth(token);
-        event.locals.user = await convex.query(api.auth.getCurrentUser, {});
+        await setLocals();
       }
     }
   }

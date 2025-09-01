@@ -8,9 +8,11 @@ declare global {
     interface Locals {
       convex: ConvexHttpClient;
       user?: FunctionReturnType<typeof api.auth.getCurrentUser>;
+      session?: FunctionReturnType<typeof api.auth.getCurrentSession>;
     }
     interface PageData {
       user?: FunctionReturnType<typeof api.auth.getCurrentUser>;
+      session?: FunctionReturnType<typeof api.auth.getCurrentSession>;
     }
     // interface PageState {}
     // interface Platform {}
