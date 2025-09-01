@@ -14,6 +14,8 @@ type AuthContext = {
   fetchAccessToken: AuthTokenFetcher;
   isLoading: boolean;
   isAuthenticated: boolean;
+  // todo: is this "generic" session data? should we type it like we type AuthClient vs GenericAuthClient?
+  session: SessionState["data"] | null;
 };
 
 export function getAuthContext() {
@@ -29,99 +31,76 @@ export function createAuthContext(options: {
 }) {
   const { authClient, convexClient, initialData } = options;
 
-  const _auth = betterAuth(authClient, initialData);
-  const _convex = convex(convexClient, authClient, _auth);
+  const auth = createAuthState(authClient, initialData);
+  const convex = createConvexState(convexClient, authClient);
 
-  useOneTimeToken(_auth, authClient);
+  const isLoading = $derived(
+    auth.isPending || (auth.isAuthenticated && convex.isAuthenticated === null),
+  );
 
+  const isAuthenticated = $derived(
+    auth.isAuthenticated && (convex.isAuthenticated ?? false),
+  );
+
+  useOneTimeToken(auth, authClient);
+
+  // prettier-ignore
   setContext<AuthContext>(AUTH_CONTEXT_KEY, {
     client: authClient,
-    fetchAccessToken: _convex.fetchAccessToken,
-    get isLoading() {
-      return _convex.isLoading;
-    },
-    get isAuthenticated() {
-      return _convex.isAuthenticated;
-    },
+    fetchAccessToken: convex.fetchAccessToken,
+    get isLoading() { return isLoading; },
+    get isAuthenticated() { return isAuthenticated; },
+    get session() { return auth.session; },
   });
 }
 
-function betterAuth(
+function createAuthState(
   authClient: AuthClient,
   initialData?: SessionState["data"] | null,
 ) {
-  let sessionData: SessionState["data"] | null = $state(initialData ?? null);
-  let sessionPending: boolean = $state(initialData ? false : true);
+  let session: SessionState["data"] | null = $state(initialData ?? null);
+  let isPending: boolean = $state(initialData ? false : true);
 
-  authClient.useSession().subscribe((session) => {
-    sessionData = session.data;
-    sessionPending = session.isPending;
+  authClient.useSession().subscribe((update) => {
+    if (update.data) session = update.data;
+    isPending = update.isPending;
   });
 
-  const isAuthenticated = $derived(sessionData !== null);
+  const isAuthenticated = $derived(session !== null);
 
+  // prettier-ignore
   return {
-    get sessionData() {
-      return sessionData;
-    },
-    get sessionPending() {
-      return sessionPending;
-    },
-    get isAuthenticated() {
-      return isAuthenticated;
-    },
+    get session() { return session; },
+    get isPending() { return isPending; },
+    get isAuthenticated() { return isAuthenticated; },
   };
 }
 
-function convex(
-  convexClient: ConvexClient,
-  authClient: AuthClient,
-  _auth: ReturnType<typeof betterAuth>,
-) {
+function createConvexState(convexClient: ConvexClient, authClient: AuthClient) {
   const fetchAccessToken: AuthTokenFetcher = async ({ forceRefreshToken }) => {
     if (forceRefreshToken) return await fetchToken(authClient);
     return null;
   };
 
-  let isConvexAuthenticated: boolean | null = $state(null);
+  let isAuthenticated: boolean | null = $state(null);
 
   $effect(() => {
     if (convexClient.disabled) return;
-
-    // TODO: re-sign in anonymously if signed out?
-    convexClient.setAuth(
-      fetchAccessToken,
-      (auth) => (isConvexAuthenticated = auth),
-    );
+    // todo: re-sign in anonymously if signed out?
+    convexClient.setAuth(fetchAccessToken, (auth) => (isAuthenticated = auth));
   });
 
-  const isLoading = $derived(
-    _auth.sessionPending ||
-      (_auth.isAuthenticated && isConvexAuthenticated === null),
-  );
-
-  const isAuthenticated = $derived(
-    _auth.isAuthenticated && (isConvexAuthenticated ?? false),
-  );
-
+  // prettier-ignore
   return {
     fetchAccessToken,
-    get isConvexAuthenticated() {
-      return isConvexAuthenticated;
-    },
-    get isAuthenticated() {
-      return isAuthenticated;
-    },
-    get isLoading() {
-      return isLoading;
-    },
+    get isAuthenticated() { return isAuthenticated; },
   };
 }
 
 //
 
 function useOneTimeToken(
-  _auth: ReturnType<typeof betterAuth>,
+  auth: ReturnType<typeof createAuthState>,
   authClient: GenericAuthClient,
 ) {
   if (!browser) return;
@@ -136,10 +115,10 @@ function useOneTimeToken(
     const result = await authClient.crossDomain?.oneTimeToken.verify({
       token,
     });
-    const sessionData = result.data?.session;
+    const session = result.data?.session;
 
-    if (sessionData) {
-      const headers = { Authorization: `Bearer ${sessionData.token}` };
+    if (session) {
+      const headers = { Authorization: `Bearer ${session.token}` };
       await authClient.getSession({ fetchOptions: { headers } });
       authClient.updateSession();
     }
@@ -148,7 +127,7 @@ function useOneTimeToken(
   }
 
   $effect(() => {
-    if (_auth.isAuthenticated) handleToken();
+    if (auth.isAuthenticated) handleToken();
   });
 
   const onUrlChange = () => handleToken();

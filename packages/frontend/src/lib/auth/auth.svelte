@@ -3,10 +3,7 @@
 	import { getAuthContext } from "./client.svelte";
 	import AuthForm from "./auth-form.svelte";
 
-	// TODO: get user/session from authContenxt
-	// TODO: make use of initial page.data within authContext so we don't have loading state?
 	const auth = getAuthContext();
-	const user = page.data.user;
 
 	async function signOut() {
 		try {
@@ -19,7 +16,7 @@
 
 {#if auth.isLoading}
 	<div>
-		<div>hello, {user?.name}!</div>
+		<div>hello, {auth.session?.user?.name}!</div>
 		<div>loading...</div>
 	</div>
 {:else if !auth.isAuthenticated}
@@ -39,7 +36,7 @@
 	/>
 {:else if auth.isAuthenticated}
 	<div>
-		<div>hello, {user?.name}!</div>
+		<div>hello, {auth.session?.user?.name}!</div>
 		<button onclick={signOut}>sign out</button>
 	</div>
 {/if}
