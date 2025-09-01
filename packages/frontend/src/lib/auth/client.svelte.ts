@@ -60,9 +60,14 @@ function createAuthState(
 ) {
   let session: SessionState["data"] | null = $state(initialData ?? null);
   let isPending: boolean = $state(initialData ? false : true);
+  let initialized: boolean = $state(false);
 
   authClient.useSession().subscribe((update) => {
-    if (update.data) session = update.data;
+    // todo: how flaky is this?
+    if (initialData && !initialized && update.data === null) return; // skip first update if initialData is provided
+    initialized = true;
+
+    session = update.data;
     isPending = update.isPending;
   });
 
