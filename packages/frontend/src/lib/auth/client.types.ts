@@ -35,7 +35,7 @@ type AuthClientWithPlugins<
   >
 >;
 
-export type AuthClient =
+export type GenericAuthClient =
   | AuthClientWithPlugins<PluginsWithCrossDomain>
   | AuthClientWithPlugins<PluginsWithoutCrossDomain>;
 
@@ -46,5 +46,5 @@ type ExtractSessionState<T> = T extends {
   : never;
 
 export type SessionState = ExtractSessionState<
-  ReturnType<AuthClient["useSession"]>
+  ReturnType<GenericAuthClient["useSession"]>
 >;

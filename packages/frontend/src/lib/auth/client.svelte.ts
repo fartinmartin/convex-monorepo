@@ -2,15 +2,15 @@
 
 import { getContext, setContext } from "svelte";
 import type { AuthTokenFetcher, ConvexClient } from "convex/browser";
-import type { AuthClient, SessionState } from "./client.types";
+import type { GenericAuthClient, SessionState } from "./client.types";
 import { browser } from "$app/environment";
 import type { authClient } from "$lib/auth-client";
 
 const AUTH_CONTEXT_KEY = Symbol("auth-context");
-type MyAuthClient = typeof authClient;
+type AuthClient = typeof authClient;
 
 type AuthContext = {
-  client: MyAuthClient;
+  client: AuthClient;
   fetchAccessToken: AuthTokenFetcher;
   isLoading: boolean;
   isAuthenticated: boolean;
@@ -23,7 +23,7 @@ export function getAuthContext() {
 }
 
 export function createAuthContext(options: {
-  authClient: MyAuthClient;
+  authClient: AuthClient;
   convexClient: ConvexClient;
   initialData?: SessionState["data"] | null;
 }) {
@@ -47,7 +47,7 @@ export function createAuthContext(options: {
 }
 
 function betterAuth(
-  authClient: MyAuthClient,
+  authClient: AuthClient,
   initialData?: SessionState["data"] | null,
 ) {
   let sessionData: SessionState["data"] | null = $state(initialData ?? null);
@@ -75,7 +75,7 @@ function betterAuth(
 
 function convex(
   convexClient: ConvexClient,
-  authClient: MyAuthClient,
+  authClient: AuthClient,
   _auth: ReturnType<typeof betterAuth>,
 ) {
   const fetchAccessToken: AuthTokenFetcher = async ({ forceRefreshToken }) => {
@@ -122,7 +122,7 @@ function convex(
 
 function useOneTimeToken(
   _auth: ReturnType<typeof betterAuth>,
-  authClient: AuthClient,
+  authClient: GenericAuthClient,
 ) {
   if (!browser) return;
 
@@ -163,7 +163,7 @@ function useOneTimeToken(
 
 //
 
-async function fetchToken(authClient: MyAuthClient) {
+async function fetchToken(authClient: AuthClient) {
   try {
     const { data } = await authClient.convex.token();
     return data?.token ?? null;
