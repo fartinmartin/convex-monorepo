@@ -1,15 +1,9 @@
-import type { ConvexClientOptions } from "convex/browser";
 import type { BetterAuthClientPlugin, ClientOptions } from "better-auth";
 import type { createAuthClient } from "better-auth/svelte";
 import type {
   crossDomainClient,
   convexClient,
 } from "@convex-dev/better-auth/client/plugins";
-
-export type ConvexAuthClient = {
-  verbose?: boolean;
-  logger?: Exclude<NonNullable<ConvexClientOptions["logger"]>, boolean>;
-};
 
 type CrossDomainClient = ReturnType<typeof crossDomainClient>;
 type ConvexClientBetterAuth = ReturnType<typeof convexClient>;
@@ -38,13 +32,3 @@ type AuthClientWithPlugins<
 export type GenericAuthClient =
   | AuthClientWithPlugins<PluginsWithCrossDomain>
   | AuthClientWithPlugins<PluginsWithoutCrossDomain>;
-
-type ExtractSessionState<T> = T extends {
-  subscribe(fn: (state: infer S) => void): unknown;
-}
-  ? S
-  : never;
-
-export type SessionState = ExtractSessionState<
-  ReturnType<GenericAuthClient["useSession"]>
->;

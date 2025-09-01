@@ -17,13 +17,13 @@
 		const sortedEntries = entries.sort(([a], [b]) => a.localeCompare(b));
 		return Object.fromEntries(sortedEntries) as T;
 	}
+
+	const json = (obj: any) => JSON.stringify(sortObject(obj ?? {}), null, 2);
 </script>
 
 {#if auth.isLoading}
-	<div>
-		<div>hello, {auth.session?.user?.name}!</div>
-		<button disabled>sign out</button>
-	</div>
+	<div>hello, {auth.session?.user?.name}!</div>
+	<button disabled>sign out</button>
 {:else if !auth.isAuthenticated}
 	<AuthForm
 		signIn={async ({ email, password }) => {
@@ -40,22 +40,13 @@
 		}}
 	/>
 {:else if auth.isAuthenticated}
-	<div>
-		<div>hello, {auth.session?.user?.name}!</div>
-		<button onclick={signOut}>sign out</button>
-	</div>
+	<div>hello, {auth.session?.user?.name}!</div>
+	<button onclick={signOut}>sign out</button>
 {/if}
 
-<pre>{JSON.stringify(sortObject(auth.session?.user ?? {}), null, 2)}</pre>
-<pre>{JSON.stringify(sortObject(auth.session?.session ?? {}), null, 2)}</pre>
-<pre>{JSON.stringify(
-		{ isLoading: auth.isLoading, isAuthenticated: auth.isAuthenticated },
-		null,
-		2,
-	)}</pre>
-
-<style>
-	* {
-		margin-bottom: 1rem;
-	}
-</style>
+<pre>user {json(auth.session?.user)}</pre>
+<pre>session {json(auth.session?.session)}</pre>
+<pre>auth {json({
+		isLoading: auth.isLoading,
+		isAuthenticated: auth.isAuthenticated,
+	})}</pre>

@@ -1,11 +1,15 @@
+import { FunctionReturnType } from "convex/server";
+import { v } from "convex/values";
 import {
   AuthFunctions,
   BetterAuth,
   PublicAuthFunctions,
 } from "@convex-dev/better-auth";
+
 import { api, components, internal } from "./_generated/api";
 import { query } from "./_generated/server";
 import { DataModel, Id } from "./_generated/dataModel";
+
 import { createAuth } from "$lib/auth";
 
 const authFunctions: AuthFunctions = internal.auth;
@@ -40,6 +44,11 @@ export const {
   },
 });
 
+export const getUser = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => await ctx.db.get(userId),
+});
+
 export const getCurrentUser = query({
   args: {},
   handler: async (ctx) => {
@@ -57,6 +66,7 @@ export const getCurrentUser = query({
   },
 });
 
+export type Session = FunctionReturnType<typeof api.auth.getCurrentSession>;
 export const getCurrentSession = query({
   args: {},
   handler: async (ctx) => {
@@ -69,6 +79,6 @@ export const getCurrentSession = query({
       return null;
     }
 
-    return session;
+    return session; // enriched with app's user data via customSession plugin!
   },
 });

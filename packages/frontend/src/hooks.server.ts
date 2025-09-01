@@ -3,8 +3,9 @@ import { sequence } from "@sveltejs/kit/hooks";
 
 import { ConvexHttpClient } from "convex/browser";
 import { PUBLIC_CONVEX_API_URL } from "$env/static/public";
-import { getCookie, getToken, signInAnonymous } from "$lib/auth";
+import type { Session } from "$convex/auth";
 import { api } from "$convex/_generated/api";
+import { getCookie, getToken, signInAnonymous } from "$lib/auth";
 
 const convexHandle: Handle = async ({ event, resolve }) => {
   event.locals.convex = new ConvexHttpClient(PUBLIC_CONVEX_API_URL);
@@ -18,20 +19,20 @@ const authHandle: Handle = async ({ event, resolve }) => {
 
   const { convex } = event.locals;
 
-  // prettier-ignore
-  const setLocals = async ({ user, session }: Partial<App.Locals> = {}) => {
-    event.locals.user = user ?? (await convex.query(api.auth.getCurrentUser, {}));
-    event.locals.session = session ?? (await convex.query(api.auth.getCurrentSession, {}));
+  const getSession = () => convex.query(api.auth.getCurrentSession, {});
+
+  const setLocals = async (session?: Session) => {
+    event.locals.session = session ?? (await getSession());
   };
 
   let token = getToken(event) ?? (await signInAnonymous(event));
 
   if (token) {
     convex.setAuth(token);
-    const user = await convex.query(api.auth.getCurrentUser, {});
+    const session = await getSession();
 
-    if (user) {
-      await setLocals({ user });
+    if (session) {
+      await setLocals(session);
     } else {
       // token is invalid/expired, clear it and sign in anonymously
       event.cookies.delete(getCookie().name, { path: "/" });

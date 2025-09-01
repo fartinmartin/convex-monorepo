@@ -1,6 +1,7 @@
 import { createAuthClient } from "better-auth/svelte";
 import {
   anonymousClient,
+  customSessionClient,
   inferAdditionalFields,
 } from "better-auth/client/plugins";
 import { convexClient } from "@convex-dev/better-auth/client/plugins";
@@ -11,5 +12,8 @@ export const authClient = createAuthClient({
     inferAdditionalFields<AuthWithoutCtx>(),
     anonymousClient(),
     convexClient<AuthWithoutCtx>(),
+    customSessionClient<AuthWithoutCtx>(),
   ],
+
+  // fetchOptions: {}
 });

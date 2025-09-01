@@ -1,11 +1,13 @@
 import { convexAdapter } from "@convex-dev/better-auth";
 import { convex, JWT_COOKIE_NAME } from "@convex-dev/better-auth/plugins";
 import { betterAuth, type BetterAuthOptions } from "better-auth";
-import { anonymous } from "better-auth/plugins";
+import { anonymous, customSession } from "better-auth/plugins";
 import { generateUsername } from "unique-username-generator";
 
 import { betterAuthComponent } from "$convex/auth";
-import { type GenericCtx } from "$convex/_generated/server";
+import type { GenericCtx } from "$convex/_generated/server";
+import type { Doc, Id } from "$convex/_generated/dataModel";
+import { api } from "$convex/_generated/api";
 
 const createOptions = (ctx: GenericCtx) =>
   ({
@@ -25,7 +27,7 @@ const createOptions = (ctx: GenericCtx) =>
 
     session: {
       expiresIn: 60 * 60 * 24 * 90, // 90 days
-      updateAge: 60 * 60 * 24, // refresh expiration every day
+      updateAge: 60 * 60 * 24, // 1 day (every 1 day the session expiration is updated)
     },
 
     plugins: [
@@ -41,7 +43,25 @@ export const createAuth = (ctx: GenericCtx) => {
   return betterAuth({
     ...options,
     // pass convex plugin options so plugin schema inference flows through.
-    plugins: [...options.plugins, convex({ options })],
+    plugins: [
+      ...options.plugins,
+      convex({ options }),
+      customSession(async (session) => {
+        const user = (await ctx.runQuery(api.auth.getUser, {
+          // @ts-ignore convex plugin adds userId
+          userId: session.user.userId as Id<"users">,
+        })) as Doc<"users">;
+
+        return {
+          ...session,
+          user: {
+            ...session.user,
+            ...user,
+            newField: "foo",
+          },
+        };
+      }, options),
+    ],
   });
 };
 

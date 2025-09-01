@@ -1,18 +1,15 @@
 import type { ConvexHttpClient } from "convex/browser";
-import type { FunctionReturnType } from "convex/server";
-import type { api } from "$convex/_generated/api";
+import type { Session } from "$convex/auth";
 
 declare global {
   namespace App {
     // interface Error {}
     interface Locals {
       convex: ConvexHttpClient;
-      user?: FunctionReturnType<typeof api.auth.getCurrentUser>;
-      session?: FunctionReturnType<typeof api.auth.getCurrentSession>;
+      session: Session;
     }
     interface PageData {
-      user?: FunctionReturnType<typeof api.auth.getCurrentUser>;
-      session?: FunctionReturnType<typeof api.auth.getCurrentSession>;
+      session: Session;
     }
     // interface PageState {}
     // interface Platform {}

@@ -1,9 +1,11 @@
 // https://github.com/mmailaender/convex-better-auth-svelte/blob/main/src/lib/svelte/client.svelte.ts
 
 import { getContext, setContext } from "svelte";
-import type { AuthTokenFetcher, ConvexClient } from "convex/browser";
-import type { GenericAuthClient, SessionState } from "./client.types";
 import { browser } from "$app/environment";
+
+import type { AuthTokenFetcher, ConvexClient } from "convex/browser";
+import type { GenericAuthClient } from "./client.types";
+import type { Session } from "$convex/auth";
 import type { authClient } from "$lib/auth-client";
 
 const AUTH_CONTEXT_KEY = Symbol("auth-context");
@@ -14,8 +16,7 @@ type AuthContext = {
   fetchAccessToken: AuthTokenFetcher;
   isLoading: boolean;
   isAuthenticated: boolean;
-  // todo: is this "generic" session data? should we type it like we type AuthClient vs GenericAuthClient?
-  session: SessionState["data"] | null;
+  session: Session;
 };
 
 export function getAuthContext() {
@@ -27,7 +28,7 @@ export function getAuthContext() {
 export function createAuthContext(options: {
   authClient: AuthClient;
   convexClient: ConvexClient;
-  initialData?: SessionState["data"] | null;
+  initialData?: Session;
 }) {
   const { authClient, convexClient, initialData } = options;
 
@@ -54,20 +55,16 @@ export function createAuthContext(options: {
   });
 }
 
-function createAuthState(
-  authClient: AuthClient,
-  initialData?: SessionState["data"] | null,
-) {
-  let session: SessionState["data"] | null = $state(initialData ?? null);
+function createAuthState(authClient: AuthClient, initialData?: Session) {
+  let session: Session | null = $state(initialData ?? null);
   let isPending: boolean = $state(initialData ? false : true);
   let initialized: boolean = $state(false);
 
   authClient.useSession().subscribe((update) => {
-    // todo: how flaky is this?
-    if (initialData && !initialized && update.data === null) return; // skip first update if initialData is provided
+    if (initialData && !initialized && update.data === null) return; // skip first update if initialData is provided // todo: how flaky is this?
     initialized = true;
 
-    session = update.data;
+    session = update.data as Session; // enriched with app's user data via customSession plugin! types are not updating (likely because of convex plugin?)
     isPending = update.isPending;
   });
 
@@ -91,6 +88,7 @@ function createConvexState(convexClient: ConvexClient, authClient: AuthClient) {
 
   $effect(() => {
     if (convexClient.disabled) return;
+
     // todo: re-sign in anonymously if signed out?
     convexClient.setAuth(fetchAccessToken, (auth) => (isAuthenticated = auth));
   });
@@ -154,41 +152,4 @@ async function fetchToken(authClient: AuthClient) {
   } catch (error) {
     return null;
   }
-}
-
-// https://github.com/sindresorhus/is-network-error/blob/main/index.js
-function isNetworkError(error: unknown): error is TypeError {
-  const objectToString = Object.prototype.toString;
-
-  const isError = (value: unknown): value is TypeError =>
-    objectToString.call(value) === "[object Error]";
-
-  const errorMessages = new Set([
-    "network error", // chrome
-    "Failed to fetch", // chrome
-    "NetworkError when attempting to fetch resource.", // firefox
-    "The Internet connection appears to be offline.", // safari 16
-    "Load failed", // safari 17+
-    "Network request failed", // `cross-fetch`
-    "fetch failed", // undici (node.js)
-    "terminated", // undici (node.js)
-  ]);
-
-  const isValid =
-    error &&
-    isError(error) &&
-    error.name === "TypeError" &&
-    typeof error.message === "string";
-
-  if (!isValid) {
-    return false;
-  }
-
-  // we do an extra check for safari 17+ as it has a very generic error message.
-  // network errors in safari have no stack.
-  if (error.message === "Load failed") {
-    return error.stack === undefined;
-  }
-
-  return errorMessages.has(error.message);
 }

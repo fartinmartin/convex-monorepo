@@ -26,11 +26,17 @@
 {@render children?.()}
 
 <style>
-	:global(body) {
-		font-family: monospace;
+	:global(*) {
+		font-family: inherit;
 	}
 
 	:global(*) {
-		font-family: inherit;
+		margin: 0;
+		margin-bottom: 1rem;
+	}
+
+	:global(body) {
+		font-family: monospace;
+		padding: 1rem;
 	}
 </style>
