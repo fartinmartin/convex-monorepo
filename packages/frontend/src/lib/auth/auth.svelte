@@ -13,16 +13,14 @@
 	}
 
 	function sortObject<T extends Record<string, any>>(obj: T): T {
-		const sortedEntries = Object.entries(obj).sort(([a], [b]) =>
-			a.localeCompare(b),
-		);
+		const entries = Object.entries(obj);
+		const sortedEntries = entries.sort(([a], [b]) => a.localeCompare(b));
 		return Object.fromEntries(sortedEntries) as T;
 	}
 </script>
 
 {#if auth.isLoading}
 	<div>
-		<div>loading...</div>
 		<div>hello, {auth.session?.user?.name}!</div>
 		<button disabled>sign out</button>
 	</div>
@@ -43,13 +41,12 @@
 	/>
 {:else if auth.isAuthenticated}
 	<div>
-		<div>loaded!</div>
 		<div>hello, {auth.session?.user?.name}!</div>
 		<button onclick={signOut}>sign out</button>
 	</div>
 {/if}
 
-<!-- <pre>{JSON.stringify(sortObject(auth.session?.user ?? {}), null, 2)}</pre> -->
+<pre>{JSON.stringify(sortObject(auth.session?.user ?? {}), null, 2)}</pre>
 <pre>{JSON.stringify(sortObject(auth.session?.session ?? {}), null, 2)}</pre>
 <pre>{JSON.stringify(
 		{ isLoading: auth.isLoading, isAuthenticated: auth.isAuthenticated },
