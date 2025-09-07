@@ -7,7 +7,7 @@
 
 <nav>
 	<div>hello, {auth.user?.name}!</div>
-	<div class="profile-container">
+	<div class="menu-container">
 		<button popovertarget="account">account</button>
 		<Account id="account" />
 	</div>
@@ -25,7 +25,7 @@
 		margin-bottom: 1rem;
 	}
 
-	.profile-container {
+	.menu-container {
 		position: relative;
 		margin-bottom: 0;
 	}
