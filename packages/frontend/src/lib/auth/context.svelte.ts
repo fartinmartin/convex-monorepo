@@ -113,13 +113,6 @@ class ConvexState {
 
 //
 
-async function createForceRefreshToken(authClient: AuthClient) {
-  return (async ({ forceRefreshToken }) => {
-    if (forceRefreshToken) return await fetchToken(authClient);
-    return null;
-  }) as AuthTokenFetcher;
-}
-
 async function fetchToken(authClient: AuthClient) {
   try {
     const { data } = await authClient.convex.token();
@@ -131,7 +124,7 @@ async function fetchToken(authClient: AuthClient) {
 
 //
 
-/* haven't tested this... */
+/* todo: haven't tested this... */
 function useOneTimeToken(auth: AuthState, authClient: GenericAuthClient) {
   if (!browser) return;
 
