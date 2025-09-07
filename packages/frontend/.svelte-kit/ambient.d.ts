@@ -81,7 +81,6 @@ declare module '$env/static/private' {
 	export const INFOPATH: string;
 	export const HOMEBREW_CELLAR: string;
 	export const npm_config_stream: string;
-	export const COLORTERM: string;
 	export const npm_node_execpath: string;
 	export const NODE_ENV: string;
 }
@@ -169,7 +168,6 @@ declare module '$env/dynamic/private' {
 		INFOPATH: string;
 		HOMEBREW_CELLAR: string;
 		npm_config_stream: string;
-		COLORTERM: string;
 		npm_node_execpath: string;
 		NODE_ENV: string;
 		[key: `PUBLIC_${string}`]: undefined;

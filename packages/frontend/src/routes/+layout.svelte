@@ -5,8 +5,8 @@
 	import { setupConvex, useConvexClient } from "convex-svelte";
 	import { PUBLIC_CONVEX_API_URL } from "$env/static/public";
 
-	import { authClient } from "$lib/auth-client";
-	import { createAuthContext } from "$lib/auth/client.svelte";
+	import { authClient } from "$lib/auth/client";
+	import { createAuthContext } from "$lib/auth/context.svelte";
 
 	let { children } = $props();
 
@@ -28,10 +28,10 @@
 <style>
 	:global(*) {
 		font-family: inherit;
+		margin: 0;
 	}
 
-	:global(*) {
-		margin: 0;
+	:global(*:not(:last-child)) {
 		margin-bottom: 1rem;
 	}
 

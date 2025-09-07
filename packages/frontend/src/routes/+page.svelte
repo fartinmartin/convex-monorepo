@@ -1,5 +1,7 @@
 <script lang="ts">
-	import Auth from "$lib/auth/auth.svelte";
+	import Nav from "$lib/bits/nav.svelte";
+	import AuthDetails from "$lib/auth/auth-details.svelte";
 </script>
 
-<Auth />
+<Nav />
+<AuthDetails />

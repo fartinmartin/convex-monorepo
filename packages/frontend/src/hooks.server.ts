@@ -5,7 +5,7 @@ import { ConvexHttpClient } from "convex/browser";
 import { PUBLIC_CONVEX_API_URL } from "$env/static/public";
 import type { Session } from "$convex/auth";
 import { api } from "$convex/_generated/api";
-import { getCookie, getToken, signInAnonymous } from "$lib/auth";
+import { getCookie, getToken, signInAnonymous } from "$lib/auth/server";
 
 const convexHandle: Handle = async ({ event, resolve }) => {
   event.locals.convex = new ConvexHttpClient(PUBLIC_CONVEX_API_URL);

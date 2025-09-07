@@ -10,7 +10,7 @@ import { api, components, internal } from "./_generated/api";
 import { query } from "./_generated/server";
 import { DataModel, Id } from "./_generated/dataModel";
 
-import { createAuth } from "$lib/auth";
+import { createAuth } from "$lib/auth/server";
 
 const authFunctions: AuthFunctions = internal.auth;
 const publicAuthFunctions: PublicAuthFunctions = api.auth;

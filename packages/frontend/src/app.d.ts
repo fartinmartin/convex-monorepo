@@ -9,6 +9,7 @@ declare global {
       session: Session;
     }
     interface PageData {
+      /* session as sent from server, use `getAuthContext()` for reactive session */
       session: Session;
     }
     // interface PageState {}

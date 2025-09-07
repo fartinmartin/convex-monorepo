@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Input from "$lib/bits/input.svelte";
+
 	let {
 		signIn,
 		signUp,
@@ -29,13 +31,29 @@
 
 <h2>{mode}</h2>
 
+{#snippet input(props: {
+	id: string;
+	type: string;
+	placeholder: string;
+	value: string;
+	oninput: (event: Event) => void;
+	required: boolean;
+})}
+	<label for={props.id}> <input {...props} /> </label>
+{/snippet}
+
 {#if mode === "sign-in"}
 	<form onsubmit={(e) => onsubmit(e, () => signIn({ email, password }))}>
-		<input type="email" placeholder="email" bind:value={email} required />
-		<input
+		<Input
+			type="email"
+			bind:value={email}
+			placeholder="example@email.com"
+			required
+		/>
+		<Input
 			type="password"
-			placeholder="password"
 			bind:value={password}
+			placeholder="hunter2"
 			required
 		/>
 		<button type="submit">sign in</button>
@@ -43,12 +61,23 @@
 	<p>don't have an account?</p>
 {:else}
 	<form onsubmit={(e) => onsubmit(e, () => signUp({ name, email, password }))}>
-		<input bind:value={name} placeholder="name" required />
-		<input type="email" placeholder="email" bind:value={email} required />
-		<input
+		<Input type="name" bind:value={name} placeholder="coolname" required />
+		<Input
 			type="password"
-			placeholder="password"
 			bind:value={password}
+			placeholder="hunter2"
+			required
+		/>
+		<Input
+			type="email"
+			bind:value={email}
+			placeholder="example@email.com"
+			required
+		/>
+		<Input
+			type="password"
+			bind:value={password}
+			placeholder="hunter2"
 			required
 		/>
 		<button type="submit">sign in</button>
